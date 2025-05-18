@@ -5,10 +5,10 @@ import pandas as pd
 from io import StringIO
 import traceback
 import re
-from .rate_limiter import rate_limit_middleware
-from .cache_headers import cache_headers_middleware
-from .cors import cors_middleware
-from .csv_validator import CSVValidator
+import rate_limiter
+import cache_headers
+import cors
+import csv_validator
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -43,8 +43,8 @@ class handler(BaseHTTPRequestHandler):
             
             # Validate CSV data
             try:
-                df = CSVValidator.validate_csv_base64(data['csv_base64'])
-                token_columns = CSVValidator.validate_token_columns(df)
+                df = csv_validator.CSVValidator.validate_csv_base64(data['csv_base64'])
+                token_columns = csv_validator.CSVValidator.validate_token_columns(df)
             except ValueError as e:
                 self._send_error(400, str(e))
                 return
@@ -191,9 +191,9 @@ class handler(BaseHTTPRequestHandler):
         }).encode())
 
 # Apply middlewares
-handler = rate_limit_middleware(handler)
-handler = cache_headers_middleware(handler)
-handler = cors_middleware(handler)
+handler = rate_limiter.rate_limit_middleware(handler)
+handler = cache_headers.cache_headers_middleware(handler)
+handler = cors.cors_middleware(handler)
 
 def main(req, context):
     return handler(req, context)
