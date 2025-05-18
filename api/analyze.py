@@ -2,71 +2,66 @@ from http.server import BaseHTTPRequestHandler
 import json
 import base64
 import pandas as pd
-from io import StringIO
+from io import StringIO, BytesIO
 import traceback
 import re
 import rate_limiter
 import cache_headers
 import cors
 import csv_validator
+import cgi
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
-        # Get content length from headers
-        content_length = int(self.headers['Content-Length'])
-        # Read the request body
-        request_body = self.rfile.read(content_length)
-        
-        try:
-            # Parse JSON body
-            data = json.loads(request_body)
-            
-            # Validate required parameters
-            required_params = ['csv_base64', 'sol_usd_price', 'token_address', 'total_supply', 'market_cap_threshold']
-            for param in required_params:
-                if param not in data:
-                    self._send_error(400, f"Missing required parameter: {param}")
-                    return
-            
-            # Validate parameter types
-            if not isinstance(data['sol_usd_price'], (int, float)):
-                self._send_error(400, "Invalid type for parameter: sol_usd_price. Expected number.")
-                return
-                
-            if not isinstance(data['total_supply'], (int, float)):
-                self._send_error(400, "Invalid type for parameter: total_supply. Expected number.")
-                return
-                
-            if not isinstance(data['market_cap_threshold'], (int, float)):
-                self._send_error(400, "Invalid type for parameter: market_cap_threshold. Expected number.")
-                return
-            
-            # Validate CSV data
-            try:
-                df = csv_validator.CSVValidator.validate_csv_base64(data['csv_base64'])
-                token_columns = csv_validator.CSVValidator.validate_token_columns(df)
-            except ValueError as e:
-                self._send_error(400, str(e))
-                return
-            
-            # Process the data
-            result = self._process_transactions(
-                df,
-                data['sol_usd_price'],
-                data['token_address'],
-                data['total_supply'],
-                data['market_cap_threshold'],
-                token_columns
+        ctype, pdict = cgi.parse_header(self.headers.get('content-type'))
+        if ctype == 'multipart/form-data':
+            pdict['boundary'] = bytes(pdict['boundary'], "utf-8")
+            pdict['CONTENT-LENGTH'] = int(self.headers['content-length'])
+            form = cgi.FieldStorage(
+                fp=self.rfile,
+                headers=self.headers,
+                environ={'REQUEST_METHOD': 'POST'},
+                keep_blank_values=True
             )
-            
-            # Send successful response
-            self._send_success(result)
-            
-        except json.JSONDecodeError:
-            self._send_error(400, "Invalid JSON format in request body.")
-        except Exception as e:
-            print(f"Internal server error: {traceback.format_exc()}")
-            self._send_error(500, "An unexpected error occurred. Please try again later.")
+            try:
+                # Extract fields from the form
+                sol_usd_price = float(form.getvalue('solPrice'))
+                token_address = form.getvalue('tokenAddress')
+                total_supply = float(form.getvalue('totalSupply'))
+                market_cap_threshold = float(form.getvalue('marketCap'))
+                fileitem = form['file']
+                if not fileitem.file:
+                    self._send_error(400, "No file uploaded.")
+                    return
+                file_content = fileitem.file.read()
+                csv_base64 = base64.b64encode(file_content).decode('utf-8')
+
+                # Validate CSV data
+                try:
+                    df = csv_validator.CSVValidator.validate_csv_base64(csv_base64)
+                    token_columns = csv_validator.CSVValidator.validate_token_columns(df)
+                except ValueError as e:
+                    self._send_error(400, str(e))
+                    return
+
+                # Process the data
+                result = self._process_transactions(
+                    df,
+                    sol_usd_price,
+                    token_address,
+                    total_supply,
+                    market_cap_threshold,
+                    token_columns
+                )
+
+                # Send successful response
+                self._send_success(result)
+
+            except Exception as e:
+                print(f"Internal server error: {traceback.format_exc()}")
+                self._send_error(500, "An unexpected error occurred. Please try again later.")
+        else:
+            self._send_error(400, "Content-Type must be multipart/form-data.")
 
     def _process_transactions(self, df, sol_usd_price, token_address, total_supply, market_cap_threshold, token_columns):
         """
