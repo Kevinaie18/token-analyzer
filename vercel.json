@@ -2,14 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/analyze.py",
+      "src": "api/**/*.py",
       "use": "now-python@3.0.0"
     }
   ],
   "routes": [
     {
-      "src": "/api/analyze",
-      "dest": "/api/analyze.py"
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
     }
   ],
   "env": {
