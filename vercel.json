@@ -2,24 +2,28 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/**/*.py",
-      "use": "@vercel/python@3.0.0",
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
       "config": {
-        "runtime": "python3.8"
+        "distDir": "dist"
       }
+    },
+    {
+      "src": "api/analyze.py",
+      "use": "@vercel/python@3.0.0"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "dest": "/api/analyze.py"
     },
     {
       "src": "/(.*)",
-      "dest": "/public/$1"
+      "dest": "/frontend/$1"
     }
   ],
   "env": {
-    "PYTHONPATH": "."
+    "PYTHONPATH": "api"
   }
 }
