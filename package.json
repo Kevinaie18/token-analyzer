@@ -1,19 +1,19 @@
 {
   "name": "token-analyzer",
   "version": "1.0.0",
-  "description": "Token Transaction Analyzer API",
-  "main": "api/analyze.py",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "api"
+  ],
   "scripts": {
-    "start": "python api/analyze.py",
-    "build": "pip install -r requirements.txt"
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:api": "cd api && npm run start",
+    "build:frontend": "cd frontend && npm run build",
+    "build:api": "cd api && npm run build",
+    "deploy": "vercel"
   },
   "engines": {
-    "node": ">=14.0.0",
-    "python": "3.8"
-  },
-  "dependencies": {
-    "@vercel/python": "^3.0.0"
-  },
-  "author": "",
-  "license": "ISC"
+    "node": ">=14.0.0"
+  }
 } 

@@ -2,14 +2,25 @@
   "version": 2,
   "builds": [
     {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
+    {
       "src": "api/analyze.py",
       "use": "@vercel/python@3.0.0"
     }
   ],
   "routes": [
     {
-      "src": "/api/analyze",
+      "src": "/api/(.*)",
       "dest": "/api/analyze.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/$1"
     }
   ],
   "env": {
