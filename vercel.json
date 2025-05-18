@@ -3,7 +3,7 @@
   "builds": [
     {
       "src": "api/analyze.py",
-      "use": "@vercel/python@3.0.0"
+      "use": "now-python@3.0.0"
     }
   ],
   "routes": [
